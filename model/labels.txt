@@ -1,5 +1,0 @@
-plastic
-metal
-organic
-paper
-glass
