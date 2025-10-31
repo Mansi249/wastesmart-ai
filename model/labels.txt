@@ -1,1 +1,5 @@
-Garbage classification
+plastic
+metal
+organic
+paper
+glass
