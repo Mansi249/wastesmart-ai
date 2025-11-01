@@ -1,4 +1,5 @@
 # utils.py
+
 import tensorflow as tf
 from tensorflow import keras
 from PIL import Image
@@ -6,22 +7,23 @@ from io import BytesIO
 import numpy as np
 
 # --- Configuration: Pointing to the Subdirectory ---
+# NOTE: The path is 'model/' because the Dockerfile copied the 'model' folder here.
 MODEL_PATH = 'model/waste_model.h5'
 LABEL_FILE = 'model/labels.txt'
-TARGET_SIZE = (224, 224) # GUARANTEED TO MATCH YOUR TRAINING CODE (224, 224)
+TARGET_SIZE = (224, 224) 
+# The normalization is based on your training code: rescale=1./255
 
 # Define which classes count as a successful recycling action for Aptos
-# Based on your labels: battery, biological, brown-glass, cardboard, clothes, 
-# green-glass, metal, paper, plastic, shoes, trash, white-glass
-# 🚨 CRITICAL: ADJUST THIS LIST IF ANY LABELS ARE MISCLASSIFIED OR MISSING!
+# Based on your labels:
 RECYCLABLE_CLASSES = [
     "battery", "brown-glass", "cardboard", "green-glass", 
     "metal", "paper", "plastic", "white-glass", "clothes", "shoes" 
 ] 
-# Note: 'biological' and 'trash' are excluded as they are generally not recyclable commodities.
+# Note: 'biological' and 'trash' are excluded. All labels are converted to lowercase.
 
 # --- Global Model Loading (Occurs when the API container starts) ---
 try:
+    # Use compile=False if you are having issues loading MobileNetV2 weights
     WASTE_MODEL = keras.models.load_model(MODEL_PATH)
     
     # Load labels: one label per line, convert to lowercase for robust checking
@@ -48,9 +50,9 @@ def preprocess_and_predict(file_data: bytes):
     img = Image.open(BytesIO(file_data)).convert('RGB')
     img = img.resize(TARGET_SIZE) 
     
-    # 2. Convert to NumPy Array and NORMALIZE (rescale=1./255)
+    # 2. Convert to NumPy Array and NORMALIZE (Matches training's rescale=1./255)
     img_array = keras.preprocessing.image.img_to_array(img)
-    normalized_array = img_array / 255.0 # <--- THIS MATCHES YOUR RESCALE=1./255
+    normalized_array = img_array / 255.0 
     
     # 3. Add batch dimension (TensorFlow expects a batch: (1, H, W, C))
     final_input = np.expand_dims(normalized_array, axis=0) 
@@ -66,7 +68,7 @@ def preprocess_and_predict(file_data: bytes):
     predicted_class = LABELS[class_index]
     
     # --- Verification Logic ---
-    # Check if the predicted class name is in our list of recyclables
     is_verified_recyclable = predicted_class in RECYCLABLE_CLASSES
     
+    # Return the three necessary outputs
     return predicted_class, float(score), is_verified_recyclable
